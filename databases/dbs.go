@@ -13,8 +13,7 @@ import (
 func main() {
 	client, err := mongo.Connect(
 		context.TODO(),
-		//mongodb+srv://mojo1234:PVKC0Av3vl7l2BSg@cluster0.j9xnr4p.mongodb.net/?retryWrites=true&w=majority
-		options.Client().ApplyURI("mongodb+srv://mojo1234:PVKC0Av3vl7l2BSg@cluster0.j9xnr4p.mongodb.net/?retryWrites=true&w=majority"))
+		options.Client().ApplyURI(""))
 	if err != nil {
 		log.SetPrefix("CONN SETUP ::: ")
 		log.SetFlags(0)
