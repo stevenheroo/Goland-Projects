@@ -21,6 +21,8 @@ var albums = []album{
 	{ID: "3", Title: "Sarah Vaughan and Clifford Brown", Artist: "Sarah Vaughan", Price: 39.99},
 }
 
+var users = make(map[string]User)
+
 func main() {
 	envErr := godotenv.Load()
 	if envErr != nil {
@@ -31,8 +33,10 @@ func main() {
 	router.GET("/albums", getAlbums)
 	router.POST("/albums", addAlbum)
 	router.GET("/albums/:id", getAlbum)
+	router.POST("/signup", signup)
 	router.POST("/login", login)
 	router.GET("/login/verify", verifyLogin)
+	router.GET("/users", getUsers)
 
 	err := router.Run("localhost:8080")
 	if err != nil {
@@ -73,11 +77,35 @@ func getAlbum(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "album not found"})
 }
 
-func login(c *gin.Context) {
+func signup(c *gin.Context) {
 
-	var users = make(map[string]User)
-	users["Steve"] = User{Username: "Steve", Password: "Test1234"}
-	users["Alex"] = User{Username: "Alex", Password: "Test1234"}
+	var newUser User
+	if err := c.BindJSON(&newUser); err != nil || len(newUser.Password) == 0 {
+		c.IndentedJSON(http.StatusExpectationFailed, gin.H{
+			"message": "Signup Failed",
+			"error":   err,
+		})
+		return
+	}
+
+	hashPass, hashErr := hashPwd(newUser.Password)
+	if hashErr != nil {
+		c.IndentedJSON(http.StatusExpectationFailed, gin.H{
+			"message": "Failed",
+			"error":   hashErr,
+		})
+		return
+	}
+	newUser.Password = hashPass
+	users[newUser.Username] = newUser
+
+	c.IndentedJSON(http.StatusExpectationFailed, gin.H{
+		"message": "Success",
+		"data":    newUser,
+	})
+}
+
+func login(c *gin.Context) {
 
 	var newUser User
 	if err := c.BindJSON(&newUser); err != nil || len(newUser.Password) == 0 {
@@ -90,15 +118,18 @@ func login(c *gin.Context) {
 	if users[newUser.Username] == (User{}) {
 		c.IndentedJSON(http.StatusForbidden, gin.H{
 			"message": "Login Failed",
+			"token":   "",
 		})
 		return
 	}
 
 	token, err := auth(newUser)
 
+	fmt.Println(err)
 	if err != nil {
 		c.IndentedJSON(http.StatusForbidden, gin.H{
 			"message": "Login Failed",
+			"token":   "",
 		})
 		return
 	}
@@ -130,3 +161,24 @@ func verifyLogin(c *gin.Context) {
 	})
 
 }
+
+func getUsers(c *gin.Context) {
+	if len(users) == 0 {
+		c.IndentedJSON(http.StatusNotFound, gin.H{
+			"message": "success",
+			"users":   map[string]User{},
+		})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, gin.H{
+		"message": "success",
+		"users":   users,
+	})
+}
+
+//func userTable() map[string]User {
+//	users["Steve"] = User{Username: "Steve", Password: "Test1234"}
+//	users["Alex"] = User{Username: "Alex", Password: "Test1234"}
+//
+//	return users
+//}

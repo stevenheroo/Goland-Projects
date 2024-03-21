@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"os"
 	"time"
@@ -18,8 +19,13 @@ type User struct {
 }
 
 func auth(newUser User) (string, error) {
-	token, err := createToken(newUser.Username)
-	return token, err
+	isMatches := isPassMatches(newUser)
+	fmt.Println(isMatches)
+	if isMatches {
+		token, err := createToken(newUser.Username)
+		return token, err
+	}
+	return "", errors.New("password mismatch")
 }
 
 func createToken(username string) (string, error) {
@@ -27,8 +33,9 @@ func createToken(username string) (string, error) {
 	claims := &jwt.RegisteredClaims{
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 5)),
-		Issuer:    "test",
+		Issuer:    "test", //todo pass certificate as issuer
 		Subject:   username,
+		Audience:  []string{"USER"},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -88,4 +95,21 @@ func getClaimsSubject(clm jwt.Claims) string {
 		return ""
 	}
 	return sub
+}
+
+func hashPwd(pwd string) (string, error) {
+	hsPwd, err := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hsPwd), nil
+}
+
+func isPassMatches(newUser User) bool {
+	hashedPwd := users[newUser.Username].Password
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(newUser.Password))
+	if err != nil {
+		return false
+	}
+	return true
 }
